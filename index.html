@@ -435,7 +435,7 @@ const INTERESTS=[['🎙️','Interview'],['🍳','Cooking'],['🛍️','Shopping
 function screens(){ return {
 
 welcome: `<div class="scr-body dock" style="padding:0;position:relative">
-    <img src="img/guide-full.png" style="width:232px;display:block;margin:auto auto 0" alt="Praktika AI tutor">
+    <img src="img/guide-full-cut.png" style="width:232px;display:block;margin:auto auto 0" alt="Praktika AI tutor">
     <div style="background:#fff;border-radius:26px 26px 0 0;padding:22px 20px 0;text-align:center;box-shadow:0 -10px 34px rgba(20,22,31,.10)">
       <div style="width:44px;height:44px;border-radius:14px;background:var(--pk-blue);margin:0 auto 12px;display:grid;place-items:center">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="#fff"><path d="M12 3C6.9 3 3 6.5 3 11c0 2.3 1.1 4.3 2.9 5.7L5 21l4.4-2.1c.8.2 1.7.3 2.6.3 5.1 0 9-3.5 9-8s-3.9-8-9-8z"/></svg></div>
@@ -462,7 +462,7 @@ native: `<div class="scr-top">${nav(2,N)}</div>
 
 'goals-intro': `<div class="scr-body dock" style="padding:64px 24px 0">
     <h1 class="scr-h1">Awesome!<br>Now, let's talk about your ${S.learn} goals.</h1>
-    <img src="img/guide-smile.png" style="width:200px;margin:auto auto 0;display:block" alt="">
+    <img src="img/guide-smile-cut.png" style="width:200px;margin:auto auto 0;display:block" alt="">
   </div>
   <div class="scr-foot"><button class="cta" onclick="go('goal')">Continue</button></div>`,
 
@@ -535,7 +535,7 @@ proof: `<div class="scr-top">${nav(11,N)}</div>
 tutor: `<div class="scr-top">${nav(12,N)}</div>
   <div class="scr-body">
     <h2 class="scr-h2" style="text-align:center">Let me introduce my friends to you.</h2>
-    <img src="img/guide-wave.png" style="width:180px;display:block;margin:6px auto 14px" alt="">
+    <img src="img/guide-wave-cut.png" style="width:180px;display:block;margin:6px auto 14px" alt="">
     <div class="tabs">${['Spain','Latin America','Mexico'].map(a=>`<button class="${S.accent===a?'on':''}" onclick="set('accent','${a}')">${a}</button>`).join('')}</div>
     <div class="opt on" style="align-items:flex-start;padding:12px;gap:12px">
       <img src="img/alejandro.png" style="width:74px;height:82px;object-fit:cover;object-position:50% 12%;border-radius:11px;background:var(--pk-card);flex:none" alt="">
@@ -595,7 +595,7 @@ payoff: `<div class="scr-top" style="padding-top:56px">${nav(16,N)}</div>
       <div class="fact"><span class="ic">🕐</span><div><div class="k">Duration</div><div class="v">${S.pace} minutes a day</div></div></div>
       <div class="fact"><span class="ic">${S.goalIcon}</span><div><div class="k">Goal</div><div class="v">${S.goal}</div></div></div>
       <div class="fact"><span class="ic">🎯</span><div><div class="k">Focus</div><div class="v">${S.focus}</div></div></div>
-      <div class="fact"><span class="ic">📈</span><div><div class="k">Starting level</div><div class="v">${S.level} — ${S.levelLab.toLowerCase()}</div></div></div>
+      <div class="fact"><span class="ic">📈</span><div><div class="k">Starting level</div><div class="v">${S.level} — ${S.levelLab}</div></div></div>
     </div>
     ${chart()}
     <p class="foot-note" style="text-align:left;margin:0 0 6px">Keep ${S.pace} minutes a day and you pass <b>10 hours of speaking practice</b> around ${fmt(tenHourDate())}.</p>
