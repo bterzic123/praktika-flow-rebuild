@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Praktika — onboarding &amp; paywall rebuild</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── tokens ───────────────────────────────────────────────────────────────
+   --pk-*  = Praktika's own palette, sampled out of the supplied capture frames
+   --page/--bar/--panel = the presentation shell. Deliberately NOT their palette. */
+:root{
+  color-scheme: only light;
+  --accent:#4157F5; --accent-ink:#2B3AC4;
+
+  --pk-blue:#4157F5; --pk-blue-d:#3446DD; --pk-blue-ink:#2B3AC4;
+  --pk-white:#FFFFFF; --pk-card:#F4F5FE; --pk-card-2:#EDEFFC;
+  --pk-line:#E6E8F8; --pk-ink:#14161F; --pk-ink-2:#3D4152; --pk-muted:#8A8FA6;
+  --pk-purple:#5B3BC4; --pk-purple-2:#7B4FE0; --pk-gold:#F5A623;
+  --r-ctl:14px; --r-media:20px;
+
+  --page:#101214; --bar:#181B1E; --hair:#23272B;
+  --panel:#FFFFFF; --panel-ink:#15181B; --panel-muted:#5F666D; --panel-line:#E6E9EC;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--page);color:#E8EBED;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+
+/* ── top bar ───────────────────────────────────────────────────────────── */
+.st-bar{position:sticky;top:0;z-index:60;height:58px;background:var(--bar);border-bottom:1px solid var(--hair);
+  display:flex;align-items:center;gap:13px;padding:0 20px}
+.st-dot{width:22px;height:22px;border-radius:7px;background:var(--accent);display:grid;place-items:center;flex:none}
+.st-dot svg{width:13px;height:13px;fill:#fff}
+.st-ttl{font-size:13.5px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+.st-ttl small{display:block;font-size:11px;font-weight:500;color:#8B9299;letter-spacing:0}
+.st-src{margin-left:16px;background:transparent;border:1px solid #2F3438;color:#C3C9CE;font:600 11.5px/1 'Plus Jakarta Sans',sans-serif;
+  padding:8px 12px;border-radius:8px;cursor:pointer}
+.st-src:hover{border-color:#454B50;color:#fff}
+.st-tabs{margin-left:auto;display:flex;gap:3px;background:var(--hair);padding:3px;border-radius:9px}
+.st-tabs button{background:transparent;border:0;color:#9BA2A8;font:700 12px/1 'Plus Jakarta Sans',sans-serif;padding:8px 15px;border-radius:7px;cursor:pointer}
+.st-tabs button.on{background:var(--accent);color:#fff}
+
+/* ── stage ─────────────────────────────────────────────────────────────── */
+.st-stage{display:grid;grid-template-columns:minmax(440px,1fr) minmax(400px,480px);gap:0;align-items:start;min-height:calc(100vh - 58px)}
+@media(max-width:1080px){.st-stage{grid-template-columns:1fr}}
+.st-phonecol{padding:30px 24px 44px;display:flex;flex-direction:column;align-items:center;gap:18px}
+.st-panelcol{border-left:1px solid var(--hair);background:#fff;color:var(--panel-ink);
+  min-height:calc(100vh - 58px);position:sticky;top:58px;max-height:calc(100vh - 58px);overflow-y:auto}
+
+/* ── phone ─────────────────────────────────────────────────────────────── */
+.phone{width:412px;height:866px;background:#000;border-radius:46px;padding:11px;flex:none;box-shadow:0 30px 70px rgba(0,0,0,.55)}
+.screenwrap{position:relative;width:390px;height:844px;border-radius:36px;overflow:hidden;background:#fff;color-scheme:only light}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:16px;z-index:50}
+.sbar{position:absolute;top:0;left:0;right:0;height:50px;z-index:40;display:flex;align-items:center;justify-content:space-between;padding:16px 26px 0;
+  font-size:13.5px;font-weight:700;color:#14161F;pointer-events:none}
+.sbar .sig{display:flex;gap:5px;align-items:center}
+.sbar svg{fill:#14161F}
+.screenwrap.dark .sbar,.screenwrap.dark .sbar svg{color:#fff;fill:#fff}
+
+/* ── screen shell ──────────────────────────────────────────────────────── */
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--pk-white);
+  transform:translateX(100%);transition:transform .36s cubic-bezier(.32,.72,0,1);z-index:10}
+.scr.is-active{transform:translateX(0);z-index:20}
+.scr.is-past{transform:translateX(-24%)}
+.scr.sheet{transform:translateY(100%)}
+.scr.sheet.is-active{transform:translateY(0);z-index:30}
+.scr.nofx{transition:none}
+.scr-top{flex:none;padding:56px 20px 0}
+.scr-body{flex:1;min-height:0;overflow-y:auto;padding:0 20px}
+.scr-body::-webkit-scrollbar{width:0}
+.scr-foot{flex:none;padding:12px 20px 30px;background:var(--pk-white)}
+.scr-body.dock{display:flex;flex-direction:column}
+
+/* ── praktika components ───────────────────────────────────────────────── */
+.scr-nav{display:flex;align-items:center;gap:12px;padding-bottom:16px}
+.scr-back{width:32px;height:32px;border-radius:50%;background:var(--pk-card);border:0;display:grid;place-items:center;cursor:pointer;flex:none}
+.scr-back svg{width:8px;height:14px;fill:none;stroke:#4A4F63;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.scr-prog{display:flex;gap:7px;flex:1}
+.scr-prog i{flex:1;height:6px;border-radius:3px;background:#E7E9F8}
+.scr-prog i.on{background:var(--pk-blue)}
+
+.scr-ask{display:flex;gap:11px;align-items:flex-start;margin:4px 0 22px}
+.scr-ask img{width:42px;height:42px;border-radius:50%;object-fit:cover;object-position:50% 22%;flex:none;background:var(--pk-card)}
+.scr-bub{background:#fff;border:1px solid #EFF0FA;border-radius:16px;border-top-left-radius:6px;padding:13px 15px;
+  font-size:14.5px;font-weight:500;line-height:1.4;color:var(--pk-ink-2);box-shadow:0 6px 20px rgba(65,87,245,.07)}
+
+.scr-h1{font-size:30px;font-weight:800;letter-spacing:-.025em;line-height:1.14;color:var(--pk-blue);text-align:center;margin:0}
+.scr-h2{font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--pk-ink);margin:0 0 4px}
+.scr-sub{font-size:13.5px;font-weight:500;color:var(--pk-muted);margin:0}
+
+.opt{display:flex;align-items:center;gap:12px;width:100%;background:var(--pk-card);border:1.6px solid transparent;border-radius:var(--r-ctl);
+  padding:15px 16px;margin-bottom:10px;font:700 15px/1.25 'Plus Jakarta Sans',sans-serif;color:var(--pk-ink);text-align:left;cursor:pointer}
+.opt em{font-style:normal;font-size:19px;line-height:1;flex:none;width:24px;text-align:center}
+.opt .ico{width:34px;height:34px;border-radius:10px;background:#fff;display:grid;place-items:center;font-size:17px;flex:none}
+.opt .sub{display:block;font-size:12.5px;font-weight:500;color:var(--pk-muted);margin-top:3px}
+.opt.on{background:#fff;border-color:var(--pk-blue)}
+.opt .lv{width:34px;flex:none;font-weight:800;font-size:15px;color:var(--pk-blue)}
+.opt .tick{margin-left:auto;width:20px;height:20px;border-radius:50%;background:#E4E7F8;flex:none;display:grid;place-items:center}
+.opt.on .tick{background:var(--pk-blue)}
+.opt .tick svg{width:10px;height:8px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.opt.on .tick svg{opacity:1}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid2 .opt{margin-bottom:0;justify-content:center;padding:14px 10px;font-size:14px}
+.grid2.left .opt{justify-content:flex-start}
+
+.cta{width:100%;height:54px;border:0;border-radius:var(--r-ctl);background:var(--pk-blue);color:#fff;
+  font:700 16.5px/1 'Plus Jakarta Sans',sans-serif;cursor:pointer;display:grid;place-items:center}
+.cta:disabled{opacity:.38}
+.cta.ghost{background:#fff;border:1.5px solid var(--pk-line);color:var(--pk-ink)}
+.cta.sm{height:48px;font-size:15px}
+.foot-note{text-align:center;font-size:12.5px;font-weight:500;color:var(--pk-muted);margin:0 0 10px}
+
+.field{width:100%;border:1.6px solid var(--pk-line);border-radius:var(--r-ctl);padding:15px 16px;font:600 15px 'Plus Jakarta Sans',sans-serif;
+  color:var(--pk-ink);background:#fff;outline:none}
+.field:focus{border-color:var(--pk-blue)}
+.search{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--pk-line);border-radius:var(--r-ctl);padding:12px 14px;margin-bottom:14px}
+.search svg{width:15px;height:15px;fill:none;stroke:var(--pk-muted);stroke-width:2}
+.search input{border:0;outline:0;font:600 14.5px 'Plus Jakarta Sans',sans-serif;flex:1;color:var(--pk-ink)}
+
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tabs button{flex:1;border:0;background:var(--pk-card);border-radius:11px;padding:10px 6px;font:700 13.5px 'Plus Jakarta Sans',sans-serif;color:var(--pk-ink-2);cursor:pointer}
+.tabs button.on{background:var(--pk-blue);color:#fff}
+
+.sec-lab{font-size:12.5px;font-weight:700;color:var(--pk-muted);margin:18px 0 10px}
+
+/* chart */
+.chartbox{background:var(--pk-card);border-radius:var(--r-media);padding:16px 14px 10px;margin-bottom:18px}
+.chartbox .big{font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--pk-blue);margin:0}
+.chartbox .small{font-size:12px;font-weight:500;color:var(--pk-muted);margin:2px 0 6px}
+.chartbox svg{display:block;width:100%;height:auto}
+.chart-x{display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--pk-muted);padding:4px 2px 0}
+
+/* plan cards */
+.plan{position:relative;display:flex;align-items:center;gap:12px;width:100%;background:var(--pk-card);border:2px solid transparent;
+  border-radius:var(--r-ctl);padding:16px 16px;margin-bottom:11px;cursor:pointer;text-align:left}
+.plan.on{background:#F7F8FF;border-color:var(--pk-blue)}
+.plan .nm{font-size:16px;font-weight:800;color:var(--pk-ink)}
+.plan .pr{font-size:13.5px;font-weight:600;color:var(--pk-ink-2);margin-top:3px}
+.plan .pr s{color:var(--pk-muted);font-weight:500;margin-right:6px}
+.plan .rd{margin-left:auto;width:24px;height:24px;border-radius:50%;background:#DFE3F7;flex:none;display:grid;place-items:center}
+.plan.on .rd{background:var(--pk-blue)}
+.plan .rd svg{width:12px;height:9px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.plan.on .rd svg{opacity:1}
+.badge{position:absolute;top:-10px;right:14px;background:var(--pk-blue);color:#fff;font:700 10.5px/1 'Plus Jakarta Sans',sans-serif;
+  padding:6px 10px;border-radius:8px;letter-spacing:.02em}
+.badge.gold{background:var(--pk-gold)}
+.toggle-row{display:flex;align-items:center;gap:10px;background:var(--pk-card);border-radius:var(--r-ctl);padding:15px 16px;margin-bottom:6px}
+.toggle-row span{font-size:13.5px;font-weight:600;color:var(--pk-ink-2)}
+.toggle-row b{font-weight:800;color:var(--pk-ink)}
+.tg{margin-left:auto;width:48px;height:28px;border-radius:14px;background:var(--pk-blue);position:relative;cursor:pointer;flex:none;transition:background .2s}
+.tg i{position:absolute;top:3px;left:23px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s}
+.tg.off{background:#D3D7EC}.tg.off i{left:3px}
+
+/* paywall tiles */
+.tiles{display:flex;gap:10px;overflow-x:auto;padding:0 0 4px;margin:0 -20px 18px;scroll-snap-type:x mandatory}
+.tiles::-webkit-scrollbar{height:0}
+.tiles>*:first-child{margin-left:20px}.tiles>*:last-child{margin-right:20px}
+.tile{flex:none;width:152px;height:118px;border-radius:16px;padding:12px;scroll-snap-align:start;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:flex-end;color:#fff}
+.tile b{font-size:13px;font-weight:800;line-height:1.2;position:relative;z-index:2}
+.tile span{font-size:10.5px;font-weight:600;opacity:.9;position:relative;z-index:2}
+.tile.p{background:linear-gradient(150deg,#6B44D8,#4A2AA8)}
+.tile.b{background:linear-gradient(150deg,#4157F5,#2E3ECB)}
+.tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;z-index:0}
+.tile .scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,12,30,.82),rgba(10,12,30,.05) 62%);z-index:1}
+.tile .stars{font-size:12px;letter-spacing:1px;color:#FFC44D;position:relative;z-index:2}
+.tile .big{font-size:26px;font-weight:800;position:relative;z-index:2;line-height:1}
+
+.goalchip{display:inline-flex;align-items:center;gap:7px;background:var(--pk-card);border-radius:20px;padding:8px 14px;
+  font-size:12.5px;font-weight:700;color:var(--pk-blue-ink);margin:0 auto 12px}
+
+.cmp{border:1px solid var(--pk-line);border-radius:var(--r-ctl);overflow:hidden;margin-bottom:18px}
+.cmp .hd,.cmp .rw{display:grid;grid-template-columns:1fr 58px 72px;align-items:center;font-size:12.5px}
+.cmp .hd{background:var(--pk-card);padding:10px 14px;font-weight:800;color:var(--pk-ink-2)}
+.cmp .hd b:last-child{color:var(--pk-blue)}
+.cmp .hd>*{text-align:center}.cmp .hd>*:first-child{text-align:left}
+.cmp .rw{padding:11px 14px;border-top:1px solid var(--pk-line);font-weight:600;color:var(--pk-ink-2)}
+.cmp .rw>*{text-align:center}.cmp .rw>*:first-child{text-align:left}
+.cmp .no{color:#C2C6D8;font-weight:800}
+.cmp .ys{color:var(--pk-blue);font-weight:800}
+
+.proofrow{display:flex;gap:9px;margin-bottom:16px}
+.proofcell{flex:1;background:var(--pk-card);border-radius:var(--r-ctl);padding:13px 8px;text-align:center}
+.proofcell b{display:block;font-size:18px;font-weight:800;color:var(--pk-blue-ink);letter-spacing:-.02em}
+.proofcell span{font-size:10.5px;font-weight:600;color:var(--pk-muted);line-height:1.25;display:block;margin-top:3px}
+.quote{background:var(--pk-card);border-radius:var(--r-media);padding:16px;margin-bottom:14px}
+.quote .st{color:#FFB01F;font-size:13px;letter-spacing:2px}
+.quote h4{margin:7px 0 6px;font-size:15px;font-weight:800;color:var(--pk-ink)}
+.quote p{margin:0;font-size:13px;font-weight:500;line-height:1.45;color:var(--pk-ink-2)}
+.quote cite{display:block;margin-top:9px;font-size:11.5px;font-style:normal;font-weight:600;color:var(--pk-muted)}
+
+/* hero / payoff */
+.hero{background:var(--pk-blue);border-radius:var(--r-media);padding:18px 16px;position:relative;overflow:hidden;min-height:150px;margin-bottom:14px}
+.hero h3{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em;color:#fff;line-height:1.2;max-width:60%}
+.hero img.face{position:absolute;right:-6px;bottom:0;height:142px;width:auto}
+.hero .stack{display:flex;align-items:center;gap:0;position:absolute;left:16px;bottom:38px}
+.hero .stack img{width:28px;height:28px;border-radius:50%;border:2px solid var(--pk-blue);object-fit:cover;object-position:50% 20%;margin-left:-8px}
+.hero .stack img:first-child{margin-left:0}
+.hero .stack .more{width:28px;height:28px;border-radius:50%;border:2px solid var(--pk-blue);background:#6E80F8;margin-left:-8px}
+.hero .cnt{position:absolute;left:16px;bottom:16px;font-size:11.5px;font-weight:700;color:#D7DDFF}
+
+.facts{background:var(--pk-card);border-radius:var(--r-media);padding:6px 14px;margin-bottom:14px}
+.fact{display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid #E4E7F8}
+.fact:last-child{border-bottom:0}
+.fact .ic{width:38px;height:38px;border-radius:12px;background:#fff;display:grid;place-items:center;font-size:17px;flex:none}
+.fact .k{font-size:11.5px;font-weight:600;color:var(--pk-muted)}
+.fact .v{font-size:15px;font-weight:800;color:var(--pk-ink);margin-top:1px}
+
+/* loader */
+.ring{width:132px;height:132px;margin:0 auto 26px;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .n{position:absolute;inset:0;display:grid;place-items:center;font-size:30px;font-weight:800;color:var(--pk-blue);letter-spacing:-.02em}
+.loadline{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--pk-ink-2);padding:9px 0;opacity:.28;transition:opacity .35s}
+.loadline.on{opacity:1}
+.loadline .dot{width:20px;height:20px;border-radius:50%;background:var(--pk-blue);display:grid;place-items:center;flex:none}
+.loadline .dot svg{width:10px;height:8px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+
+/* chat */
+.scr.chat{background:#fff}
+.chat-top{display:flex;align-items:center;gap:10px;padding:56px 18px 12px;flex:none}
+.chat-top .x{width:30px;height:30px;border-radius:50%;background:var(--pk-card);display:grid;place-items:center;font-size:15px;color:#5A5F73;cursor:pointer;border:0}
+.chat-top .who{display:flex;align-items:center;gap:8px;background:var(--pk-card);border-radius:20px;padding:5px 13px 5px 5px;font-size:13.5px;font-weight:700;color:var(--pk-ink)}
+.chat-top .who img{width:22px;height:22px;border-radius:50%;object-fit:cover;object-position:50% 18%}
+.vid{border-radius:var(--r-media);overflow:hidden;background:var(--pk-card);height:196px;position:relative;margin-bottom:12px}
+.vid img{width:100%;height:100%;object-fit:cover;object-position:50% 26%}
+.vid .chip{position:absolute;top:10px;right:10px;background:var(--pk-blue);color:#fff;font:700 11px/1 'Plus Jakarta Sans',sans-serif;padding:7px 11px;border-radius:20px}
+.msg{max-width:84%;border-radius:16px;padding:12px 14px;font-size:13.5px;font-weight:500;line-height:1.45;margin-bottom:10px;white-space:pre-line}
+.msg.them{background:var(--pk-card);color:var(--pk-ink-2);border-top-left-radius:6px}
+.msg.me{background:var(--pk-blue);color:#fff;margin-left:auto;border-top-right-radius:6px;font-weight:600}
+.fb{display:inline-flex;align-items:center;gap:6px;background:#E9FBEF;color:#12703A;font:700 11px/1 'Plus Jakarta Sans',sans-serif;
+  padding:6px 10px;border-radius:8px;margin:-4px 0 12px auto;}
+.fbwrap{display:flex}
+.mic{width:66px;height:66px;border-radius:50%;background:var(--pk-blue);border:0;display:grid;place-items:center;margin:0 auto;cursor:pointer;
+  box-shadow:0 10px 26px rgba(65,87,245,.4)}
+.mic svg{width:24px;height:30px;fill:#fff}
+.done{display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:800;color:var(--pk-ink);margin:6px 0 4px}
+
+.sheet-card{position:absolute;left:12px;right:12px;bottom:118px;background:#fff;border-radius:var(--r-media);box-shadow:0 -6px 40px rgba(20,22,31,.18);
+  border:1px solid var(--pk-line);padding:14px 16px;z-index:35}
+.sheet-card .r{display:flex;gap:10px;align-items:flex-start;padding:8px 0}
+.sheet-card .r+.r{border-top:1px solid var(--pk-line)}
+.sheet-card .r .ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;color:#fff;flex:none;margin-top:1px}
+.sheet-card .r b{font-size:13.5px;font-weight:800;color:var(--pk-ink);display:block}
+.sheet-card .r p{margin:3px 0 0;font-size:12.5px;font-weight:500;line-height:1.4;color:var(--pk-ink-2)}
+
+/* offer */
+.laurel{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px}
+.laurel .lv{font-size:22px;color:#C9A227}
+.offer-t{display:flex;gap:12px;margin-bottom:16px}
+.tl{position:relative;padding-left:26px;margin-bottom:0}
+.tl .step{position:relative;padding:0 0 18px 0}
+.tl .step:last-child{padding-bottom:0}
+.tl .step::before{content:'';position:absolute;left:-19px;top:4px;width:11px;height:11px;border-radius:50%;background:var(--pk-blue)}
+.tl .step::after{content:'';position:absolute;left:-14.5px;top:15px;bottom:0;width:2px;background:#DDE1F7}
+.tl .step:last-child::after{display:none}
+.tl .step.mut::before{background:#C7CCE8}
+.tl b{font-size:13.5px;font-weight:800;color:var(--pk-ink);display:block}
+.tl span{font-size:12.5px;font-weight:500;color:var(--pk-muted)}
+
+/* system dialogs */
+.dlg-bg{position:absolute;inset:0;background:rgba(20,22,31,.42);display:grid;place-items:center;z-index:45}
+.dlg{width:270px;background:#F2F2F4;border-radius:14px;overflow:hidden;text-align:center;font-family:-apple-system,'SF Pro Text',sans-serif}
+.dlg .bd{padding:19px 16px 15px}
+.dlg h5{margin:0 0 5px;font-size:15px;font-weight:700;color:#000}
+.dlg p{margin:0;font-size:12.5px;color:#1c1c1e;line-height:1.35}
+.dlg .btns{display:flex;border-top:.5px solid #C6C6C8}
+.dlg .btns button{flex:1;background:transparent;border:0;padding:11px 4px;font-size:16px;color:#0A7AFF;cursor:pointer;font-family:inherit}
+.dlg .btns button+button{border-left:.5px solid #C6C6C8;font-weight:600}
+
+/* jump chips */
+.chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;max-width:620px}
+.chips button{background:#1B1F22;border:1px solid #2C3136;color:#AAB2B8;font:600 11.5px/1 'Plus Jakarta Sans',sans-serif;
+  padding:8px 12px;border-radius:20px;cursor:pointer}
+.chips button:hover{border-color:#454B50;color:#fff}
+.chips button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.chips button.offer{border-color:#6B44D8;color:#C6AEFF}
+.chips button.offer.on{background:#6B44D8;border-color:#6B44D8;color:#fff}
+.chip-hint{font-size:11.5px;color:#767D84;text-align:center;max-width:560px;margin:0}
+
+/* ── side panel ────────────────────────────────────────────────────────── */
+.pn{padding:30px 32px 56px}
+.pn-step{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--panel-muted);margin:0 0 10px}
+.pn-t{font-size:22px;font-weight:700;letter-spacing:-.02em;margin:0 0 12px;color:var(--panel-ink)}
+.pn-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+.pn-tags i{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;padding:5px 9px;border-radius:6px}
+.tg-kept{background:#E8F7ED;color:#146B31}.tg-merged{background:#EAF0FB;color:#1B4C9B}
+.tg-moved{background:#FDF2E2;color:#8A5410}.tg-cut{background:#FBEAEA;color:#94211F}
+.tg-new{background:#F1EAFB;color:#5A2C9B}
+.pn-lab{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--panel-muted);margin:0 0 8px}
+.pn-lab::before{content:'';width:14px;height:2px;flex:none;background:var(--accent);border-radius:2px}
+.pn-p{font-size:13.5px;line-height:1.62;color:#2C3238;margin:0 0 22px}
+.pn-imp{background:#F5F8F6;border:1px solid var(--panel-line);border-left:3px solid var(--accent);border-radius:8px;padding:13px 15px;margin-bottom:20px}
+.pn-imp .v{font-size:17px;font-weight:800;letter-spacing:-.02em;color:var(--accent-ink)}
+.pn-imp .l{font-size:11.5px;color:var(--panel-muted);margin-top:2px}
+.pn-foot{font-size:11.5px;line-height:1.6;color:var(--panel-muted);border-top:1px solid var(--panel-line);padding-top:14px;margin:0}
+.pn-foot b{color:#2C3238}
+.pn-foot a{color:var(--accent-ink);font-weight:700}
+
+/* ── tab 2 ─────────────────────────────────────────────────────────────── */
+#tab2{display:none;padding:44px 40px 90px;max-width:1180px;margin:0 auto}
+#tab2 h2{font-size:30px;font-weight:800;letter-spacing:-.025em;margin:0 0 7px}
+#tab2 .sub{font-size:14px;color:#8D959B;margin:0 0 30px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C848B;
+  padding:0 16px 12px;border-bottom:1px solid var(--hair)}
+td{padding:17px 16px;border-bottom:1px solid var(--hair);vertical-align:top;color:#C8CED3;line-height:1.55}
+td.n{color:#666E75;font-weight:700;width:34px}
+td.ch{color:#fff;font-weight:700;width:210px}
+td.im{color:#7FE3A0;font-weight:800;white-space:nowrap;width:130px}
+td.pr{width:110px}
+.pill{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:5px 9px;border-radius:6px;white-space:nowrap}
+.pr-f{background:#4A1F1A;color:#FF9B88}.pr-h{background:#4A3712;color:#F5C46A}
+.pr-m{background:#17324F;color:#8FC2F0}.pr-l{background:#2A2F33;color:#9AA3AD}
+#tab2 .disc{margin-top:28px;font-size:12px;color:#6E767D;line-height:1.6}
+#tab2 .disc a{color:#9FB5FF}
+
+/* ── sources modal ─────────────────────────────────────────────────────── */
+.modal{position:fixed;inset:0;background:rgba(6,8,10,.72);z-index:100;display:none;place-items:center;padding:40px 20px}
+.modal.on{display:grid}
+.modal .box{background:#fff;color:#15181B;max-width:760px;width:100%;max-height:82vh;overflow-y:auto;border-radius:14px;padding:32px 34px}
+.modal h3{margin:0 0 6px;font-size:21px;font-weight:800;letter-spacing:-.02em}
+.modal .lead{margin:0 0 22px;font-size:13px;color:#5F666D;line-height:1.55}
+.modal dl{margin:0}
+.modal dt{font-size:13.5px;font-weight:800;margin-top:16px}
+.modal dd{margin:4px 0 0;font-size:12.5px;color:#4A5157;line-height:1.55}
+.modal dd a{color:#2B3AC4;font-weight:600;word-break:break-all}
+.modal .cls{float:right;background:#F1F3F5;border:0;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;color:#5F666D}
+.modal h4{margin:26px 0 0;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8A9199}
+</style>
+</head>
+<body>
+
+<header class="st-bar">
+  <div class="st-dot"><svg viewBox="0 0 24 24"><path d="M12 3C6.9 3 3 6.5 3 11c0 2.3 1.1 4.3 2.9 5.7L5 21l4.4-2.1c.8.2 1.7.3 2.6.3 5.1 0 9-3.5 9-8s-3.9-8-9-8z"/></svg></div>
+  <div class="st-ttl">Praktika — onboarding &amp; paywall rebuild<small>Sequence re-ordered · art direction untouched</small></div>
+  <button class="st-src" onclick="openSrc()">Sources &amp; grounding</button>
+  <div class="st-tabs">
+    <button id="tb1" class="on" onclick="tab(1)">Prototype</button>
+    <button id="tb2" onclick="tab(2)">Before → After</button>
+  </div>
+</header>
+
+<main id="tab1" class="st-stage">
+  <div class="st-phonecol">
+    <div class="phone"><div class="screenwrap" id="wrap">
+      <div class="island"></div>
+      <div class="sbar"><span id="clk">9:41</span><span class="sig">
+        <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+        <svg width="16" height="11" viewBox="0 0 16 11"><path d="M8 9.8 5.6 7.4a3.4 3.4 0 0 1 4.8 0L8 9.8zM8 5.2c-1.6 0-3.1.6-4.2 1.7L2.2 5.4a8.2 8.2 0 0 1 11.6 0l-1.6 1.5A5.9 5.9 0 0 0 8 5.2zM8 .8c-2.8 0-5.4 1.1-7.3 3L0 2.4A11.6 11.6 0 0 1 8 0c3 0 5.9 1.2 8 3.2l-.7.7A10.3 10.3 0 0 0 8 .8z"/></svg>
+        <svg width="25" height="11" viewBox="0 0 25 11"><rect x="0.5" y="0.5" width="20" height="10" rx="3" fill="none" stroke-width="1" style="stroke:currentColor;opacity:.4"/><rect x="2" y="2" width="17" height="7" rx="1.6"/><path d="M22 4v3a2 2 0 0 0 0-3z"/></svg>
+      </span></div>
+      <!-- SCREENS -->
+    </div></div>
+    <div class="chips" id="chips"></div>
+    <p class="chip-hint">Every chip lands with the answers already filled in — goal <b>Travel</b>, pace <b>5 min a day</b>, level <b>A2</b>, tutor <b>Alejandro</b>. Change the pace on step 9 and the chart, the plan card and the paywall all move with it.</p>
+  </div>
+  <aside class="st-panelcol"><div class="pn" id="panel"></div></aside>
+</main>
+
+<section id="tab2"></section>
+
+<div class="modal" id="srcmodal"><div class="box">
+  <button class="cls" onclick="closeSrc()">×</button>
+  <h3>Sources &amp; grounding</h3>
+  <p class="lead">Every price, rating, quote and feature line in this prototype comes from Praktika's own published material — the live App Store listing, praktika.ai, and the supplied in-app capture frames. Figures that exist only on third-party blogs were not used. The slots left empty are listed at the bottom.</p>
+  <dl id="srclist"></dl>
+</div></div>
+
+<script>
+/* ═══ state ═══════════════════════════════════════════════════════════════ */
+const S = {
+  learn:'Spanish', native:'English',
+  goal:'Travel', goalIcon:'✈️',
+  skills:['Hotel booking','Food and cafe','City navigation'],
+  level:'A2', levelLab:'I know a few sentences',
+  focus:'Learn and use grammar rules',
+  pace:5,
+  name:'Julia', age:'25-34', gender:'Female',
+  interests:['Music','Traveling','Sports','Social Media'],
+  accent:'Spain', tutor:'Alejandro',
+  plan:'year', notify:true, chatTurn:0
+};
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmt = d => MON[d.getMonth()]+' '+d.getDate();
+const addD = n => { const d=new Date(); d.setDate(d.getDate()+n); return d; };
+const hoursMonth = () => Math.round(S.pace*30/60*10)/10;
+const tenHourDate = () => addD(Math.ceil(600/S.pace));
+const trialEnd = () => addD(7);
+</script>
+<script>
+/* ═══ helpers ═════════════════════════════════════════════════════════════ */
+const TICK = '<svg viewBox="0 0 12 9"><path d="M1 4.6 4.3 8 11 1"/></svg>';
+const CHEV = '<svg viewBox="0 0 8 14"><path d="M7 1 1 7l6 6"/></svg>';
+const SEG = 6;
+const nav = (i,n) => { const f=Math.max(1,Math.round(i/n*SEG));
+  return `<div class="scr-nav"><button class="scr-back" onclick="back()">${CHEV}</button>
+  <div class="scr-prog">${Array.from({length:SEG},(_,k)=>`<i class="${k<f?'on':''}"></i>`).join('')}</div></div>`; };
+const ask = t => `<div class="scr-ask"><img src="img/guide-face.png" alt=""><div class="scr-bub">${t}</div></div>`;
+
+/* projection chart — recomputes from S.pace, exactly the shape in their frames */
+function chart(){
+  const W=322,H=124, XM=310, paces=[5,10,15,30,40,60], k=paces.indexOf(S.pace);
+  const curve=(kk)=>{const s=.30+kk*.135;let d='';for(let i=0;i<=30;i++){const x=i/30;const y=H-4-(H*.80)*Math.pow(x,2.1)*s;d+=(i?'L':'M')+(x*XM+6).toFixed(1)+' '+y.toFixed(1);}return d;};
+  const guides=paces.map((p,i)=>i===k?'':`<path d="${curve(i)}" fill="none" stroke="#C9CEE8" stroke-width="1.2" stroke-dasharray="3 4" opacity=".75"/>`).join('');
+  const sel=curve(k);
+  const pts=[0,.25,.5,.75,1].map(t=>{const x=t*XM+6,y=H-4-(H*.80)*Math.pow(t,2.1)*(.30+k*.135);return{x,y};});
+  const dots=pts.map((p,i)=>i===pts.length-1
+    ?`<circle cx="${p.x}" cy="${p.y}" r="7" fill="#fff" stroke="#4157F5" stroke-width="3"/>`
+    :`<circle cx="${p.x}" cy="${p.y}" r="3.4" fill="#fff" stroke="#4157F5" stroke-width="1.8"/>`).join('');
+  const vgrid=[.25,.5,.75].map(t=>`<line x1="${(t*XM+6).toFixed(1)}" y1="0" x2="${(t*XM+6).toFixed(1)}" y2="${H}" stroke="#E2E5F6" stroke-width="1"/>`).join('');
+  return `<div class="chartbox">
+    <p class="big">${hoursMonth()} hours per month</p>
+    <p class="small">Just ${S.pace} min a day</p>
+    <svg viewBox="0 0 ${W} ${H}">${vgrid}${guides}
+      <path d="${sel}" fill="none" stroke="#4157F5" stroke-width="2.4" stroke-linecap="round"/>${dots}</svg>
+    <div class="chart-x"><span>Today</span><span>${fmt(addD(14))}</span><span>${fmt(addD(28))}</span></div>
+  </div>`;
+}
+
+/* ═══ screens ═════════════════════════════════════════════════════════════ */
+const N = 19;
+const LANGS=[['🇬🇧','English'],['🇪🇸','Spanish'],['🇮🇹','Italian'],['🇧🇷','Portuguese (BR)'],['🇯🇵','Japanese'],['🇰🇷','Korean'],['🇹🇷','Turkish'],['🇫🇷','French'],['🇩🇪','German'],['🇸🇦','Arabic']];
+const GOALS=[['💼','Career growth'],['✈️','Travel'],['📚','Study abroad'],['🏠','Living abroad'],['🌱','Personal development']];
+const SKILLS=['Hotel booking','Emergencies','Food and cafe','City navigation','Health','Transport','Culture & Etiquette','Shopping'];
+const SKILL_ICO={'Hotel booking':'🛏️','Emergencies':'🆘','Food and cafe':'☕','City navigation':'🧭','Health':'💊','Transport':'🚌','Culture & Etiquette':'🎎','Shopping':'🛍️'};
+const LEVELS=[['A1',"I'm new to this language"],['A2','I know a few sentences'],['B1','I can manage simple conversations'],['B2','I can communicate comfortably with native speakers'],['C1',"I'm an expert"],['C2',"I'm a native-level speaker"]];
+const FOCUS=[['🔤','Learn and use grammar rules'],['🎤','Practice pronunciation'],['💬','Speak in different situations'],['🧠','Memorize and apply new words'],['💡','Getting to know interesting facts'],['👂','Understand native speakers'],['📰','Read news, articles and researches']];
+const INTERESTS=[['🎙️','Interview'],['🍳','Cooking'],['🛍️','Shopping'],['🎵','Music'],['✈️','Traveling'],['🎨','Art'],['🎮','Gaming'],['⚽','Sports'],['💰','Finance'],['💻','Tech'],['🎬','Cinema'],['💃','Dancing'],['🏛️','History'],['📱','Social Media']];
+
+function screens(){ return {
+
+welcome: `<div class="scr-body dock" style="padding:0;position:relative">
+    <img src="img/guide-full.png" style="width:232px;display:block;margin:auto auto 0" alt="Praktika AI tutor">
+    <div style="background:#fff;border-radius:26px 26px 0 0;padding:22px 20px 0;text-align:center;box-shadow:0 -10px 34px rgba(20,22,31,.10)">
+      <div style="width:44px;height:44px;border-radius:14px;background:var(--pk-blue);margin:0 auto 12px;display:grid;place-items:center">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="#fff"><path d="M12 3C6.9 3 3 6.5 3 11c0 2.3 1.1 4.3 2.9 5.7L5 21l4.4-2.1c.8.2 1.7.3 2.6.3 5.1 0 9-3.5 9-8s-3.9-8-9-8z"/></svg></div>
+      <h2 class="scr-h2" style="text-align:center;font-size:24px">Welcome to Praktika</h2>
+    </div></div>
+  <div class="scr-foot" style="padding-top:14px">
+    <button class="cta" onclick="go('learn')">Get Started</button>
+    <button class="cta ghost sm" style="margin-top:10px" onclick="go('learn')">Log in</button>
+    <p class="foot-note" style="margin:14px 0 0;font-size:11px">By using the app you agree to the<br><u>Privacy Policy</u> and <u>Terms &amp; Conditions</u></p>
+  </div>`,
+
+learn: `<div class="scr-top">${nav(1,N)}</div>
+  <div class="scr-body">${ask('Select the language you want to learn')}
+    ${[['🇬🇧','English'],['🇪🇸','Spanish']].map(([f,l])=>`<button class="opt ${S.learn===l?'on':''}" onclick="set('learn','${l}');go('native')"><em>${f}</em>${l}</button>`).join('')}
+    <p class="sec-lab">Coming soon ...</p>
+    ${[['🇫🇷','French'],['🇩🇪','German'],['🇮🇹','Italian'],['🇯🇵','Japanese']].map(([f,l])=>`<div class="opt" style="opacity:.42;cursor:default"><em>${f}</em>${l}</div>`).join('')}
+  </div><div class="scr-foot"></div>`,
+
+native: `<div class="scr-top">${nav(2,N)}</div>
+  <div class="scr-body">${ask("What's your native language?")}
+    <div class="search"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg><input placeholder="Search" oninput="filterLang(this.value)"></div>
+    <div id="langlist">${LANGS.map(([f,l])=>`<button class="opt ${S.native===l?'on':''}" data-l="${l}" onclick="set('native','${l}');go('goals-intro')"><em>${f}</em>${l}</button>`).join('')}</div>
+  </div><div class="scr-foot"></div>`,
+
+'goals-intro': `<div class="scr-body dock" style="padding:64px 24px 0">
+    <h1 class="scr-h1">Awesome!<br>Now, let's talk about your ${S.learn} goals.</h1>
+    <img src="img/guide-smile.png" style="width:200px;margin:auto auto 0;display:block" alt="">
+  </div>
+  <div class="scr-foot"><button class="cta" onclick="go('goal')">Continue</button></div>`,
+
+goal: `<div class="scr-top">${nav(4,N)}</div>
+  <div class="scr-body">${ask('Why do you want to learn a new language?')}
+    ${GOALS.map(([e,g])=>`<button class="opt ${S.goal===g?'on':''}" onclick="set('goal','${g}');set('goalIcon','${e}');go('skills')"><span class="ico">${e}</span>${g}</button>`).join('')}
+  </div><div class="scr-foot"></div>`,
+
+skills: `<div class="scr-top">${nav(5,N)}</div>
+  <div class="scr-body">${ask('Select skills you would like to learn')}
+    ${SKILLS.map(s=>`<button class="opt ${S.skills.includes(s)?'on':''}" onclick="multi('skills','${s.replace(/'/g,"\\'")}')"><span class="ico">${SKILL_ICO[s]}</span>${s}<span class="tick">${TICK}</span></button>`).join('')}
+  </div>
+  <div class="scr-foot"><button class="cta" ${S.skills.length?'':'disabled'} onclick="go('level')">Continue</button></div>`,
+
+level: `<div class="scr-top">${nav(6,N)}</div>
+  <div class="scr-body">${ask(`What's your current level of ${S.learn}?`)}
+    ${LEVELS.map(([c,l])=>`<button class="opt ${S.level===c?'on':''}" onclick="set('level','${c}');set('levelLab','${l.replace(/'/g,"\\'")}');go('focus')"><span class="lv">${c}</span>${l}</button>`).join('')}
+  </div><div class="scr-foot"></div>`,
+
+focus: `<div class="scr-top">${nav(7,N)}</div>
+  <div class="scr-body">${ask('What language skills do you need to improve?')}
+    ${FOCUS.map(([e,f])=>`<button class="opt ${S.focus===f?'on':''}" onclick="set('focus','${f}');go('pace')"><span class="ico">${e}</span>${f}</button>`).join('')}
+  </div><div class="scr-foot"></div>`,
+
+pace: `<div class="scr-top">${nav(8,N)}</div>
+  <div class="scr-body">${ask('How many minutes do you want to practice per day?')}
+    ${chart()}
+    <div class="grid2">${[5,10,15,30,40,60].map(p=>`<button class="opt ${S.pace===p?'on':''}" onclick="set('pace',${p})">${p} min</button>`).join('')}</div>
+    <p class="foot-note" style="margin:14px 0 0;text-align:left">At ${S.pace} min a day you pass <b>10 hours of speaking practice</b> around ${fmt(tenHourDate())}.</p>
+  </div>
+  <div class="scr-foot"><button class="cta" onclick="go('about')">Continue</button></div>`,
+
+about: `<div class="scr-top">${nav(9,N)}</div>
+  <div class="scr-body">${ask('Now tell me about yourself — your tutor uses this to pitch the level and the topics.')}
+    <p class="sec-lab" style="margin-top:0">What should your tutor call you?</p>
+    <input class="field" value="${S.name}" oninput="S.name=this.value" placeholder="Your name">
+    <p class="sec-lab">How old are you?</p>
+    <div class="grid2">${['Under 18','18-24','25-34','35-44','45-54','55-64','65 and over'].map(a=>`<button class="opt ${S.age===a?'on':''}" onclick="set('age','${a}')">${a}</button>`).join('')}</div>
+    <p class="sec-lab">Gender</p>
+    <div class="grid2">${['Male','Female','Prefer not to say'].map(g=>`<button class="opt ${S.gender===g?'on':''}" onclick="set('gender','${g}')">${g}</button>`).join('')}</div>
+  </div>
+  <div class="scr-foot"><button class="cta" onclick="go('interests')">Continue</button></div>`,
+
+interests: `<div class="scr-top">${nav(10,N)}</div>
+  <div class="scr-body">${ask('What are your hobbies and interests?')}
+    <div class="grid2 left">${INTERESTS.map(([e,i])=>`<button class="opt ${S.interests.includes(i)?'on':''}" onclick="multi('interests','${i}')"><span class="ico">${e}</span>${i}</button>`).join('')}</div>
+  </div>
+  <div class="scr-foot"><button class="cta" ${S.interests.length?'':'disabled'} onclick="go('proof')">Continue</button></div>`,
+
+proof: `<div class="scr-top">${nav(11,N)}</div>
+  <div class="scr-body">
+    <h2 class="scr-h2" style="margin-bottom:6px">You're about to speak out loud.</h2>
+    <p class="scr-sub" style="margin-bottom:18px">Here's who else did.</p>
+    <div class="proofrow">
+      <div class="proofcell"><b>4.7★</b><span>from 164K App Store ratings</span></div>
+      <div class="proofcell"><b>30M+</b><span>learners worldwide</span></div>
+      <div class="proofcell"><b>100K+</b><span>5-star reviews</span></div>
+    </div>
+    <div class="quote"><div class="st">★★★★★</div>
+      <h4>Duolingo Who? Great News for Polyglots</h4>
+      <p>“This app is amazing for those who understand that practice and application of the targeted language is a more effective way to learn a language… As someone who could previously not speak French, only read it, now I am speaking.”</p>
+      <cite>sativashawdy · App Store review</cite></div>
+    <div class="quote"><div class="st">★★★★★</div>
+      <h4>This app is incredible!</h4>
+      <p>“The AI companion corrects your grammar but in a way that doesn't break from the conversation. It'll repeat you but say the better way of discussing things while also teaching you additional words.”</p>
+      <cite>Jeanne Marie Hoffman · App Store review</cite></div>
+  </div>
+  <div class="scr-foot"><button class="cta" onclick="go('tutor')">Continue</button></div>`,
+
+tutor: `<div class="scr-top">${nav(12,N)}</div>
+  <div class="scr-body">
+    <h2 class="scr-h2" style="text-align:center">Let me introduce my friends to you.</h2>
+    <img src="img/guide-wave.png" style="width:180px;display:block;margin:6px auto 14px" alt="">
+    <div class="tabs">${['Spain','Latin America','Mexico'].map(a=>`<button class="${S.accent===a?'on':''}" onclick="set('accent','${a}')">${a}</button>`).join('')}</div>
+    <div class="opt on" style="align-items:flex-start;padding:12px;gap:12px">
+      <img src="img/alejandro.png" style="width:74px;height:82px;object-fit:cover;object-position:50% 12%;border-radius:11px;background:var(--pk-card);flex:none" alt="">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:16px;font-weight:800">${S.tutor}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--pk-muted);margin:2px 0 6px">🔊 ${S.learn} · ${S.accent}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">${['Energetic','Vibrant','Sporty'].map(t=>`<span style="background:#fff;border:1px solid var(--pk-line);border-radius:7px;padding:4px 8px;font-size:10.5px;font-weight:700;color:var(--pk-ink-2)">${t}</span>`).join('')}</div>
+        <div style="font-size:11.5px;font-weight:600;color:var(--pk-blue-ink);margin-top:7px">Teaches in ${S.native}</div>
+      </div><span class="tick" style="margin:0">${TICK}</span></div>
+    <p class="foot-note" style="text-align:left;margin:12px 0 0">Matched to <b>${S.goal}</b> · ${S.focus.toLowerCase()} · level ${S.level}. 24 more tutors inside.</p>
+  </div>
+  <div class="scr-foot"><button class="cta" onclick="go('quickchat')">Start learning with ${S.tutor}</button></div>`,
+
+quickchat: `<div class="scr-top">${nav(13,N)}</div>
+  <div class="scr-body">
+    <h1 class="scr-h1" style="margin-bottom:16px">Quick Chat</h1>
+    <div class="vid" style="height:auto;padding:14px 0 0;display:flex;justify-content:center"><img src="img/alejandro.png" style="width:186px;height:125px;object-fit:contain" alt=""><div class="chip">🕐 1 min</div></div>
+    <div class="msg them" style="max-width:100%;margin-bottom:12px">🇪🇸 Hi, ${S.name}! Let's start our first lesson to accurately assess your ${S.learn} level.</div>
+    <div class="msg them" style="max-width:100%;background:#F7F8FF;border:1px solid var(--pk-line)">
+      🎙️ <b>You'll speak, ${S.tutor} listens.</b> We ask for the microphone the first time you hold the button — nothing is recorded before that.</div>
+  </div>
+  <div class="scr-foot"><button class="cta" onclick="go('chat')">Let's go!</button>
+    <button class="cta ghost sm" style="margin-top:10px" onclick="go('loader')">Skip Quick chat</button></div>`,
+
+chat: `<div class="chat-top"><button class="x" onclick="back()">✕</button>
+    <div class="who"><img src="img/alejandro.png" alt="">${S.tutor} ⌄</div></div>
+  <div class="scr-body" id="chatbody">
+    <div class="vid" style="height:auto;display:flex;justify-content:center;align-items:flex-end;padding-top:12px"><img src="img/alejandro.png" style="width:186px;height:125px;object-fit:contain" alt=""></div>
+    <div id="chatlog"></div>
+  </div>
+  <div class="scr-foot" id="chatfoot"></div>`,
+
+loader: `<div class="scr-body dock" style="padding:88px 26px 0;text-align:center">
+    <div class="ring"><svg width="132" height="132" viewBox="0 0 132 132">
+      <circle cx="66" cy="66" r="58" fill="none" stroke="#E7E9F8" stroke-width="9"/>
+      <circle id="ringc" cx="66" cy="66" r="58" fill="none" stroke="#4157F5" stroke-width="9" stroke-linecap="round"
+        stroke-dasharray="364" stroke-dashoffset="364"/></svg><div class="n" id="ringn">0</div></div>
+    <h2 class="scr-h2" style="text-align:center;font-size:21px;margin-bottom:18px">We're building your ${S.learn} plan</h2>
+    <div style="text-align:left">
+      <div class="loadline" id="ld0"><span class="dot">${TICK}</span>Goal: ${S.goal}</div>
+      <div class="loadline" id="ld1"><span class="dot">${TICK}</span>Level ${S.level} confirmed in Quick Chat</div>
+      <div class="loadline" id="ld2"><span class="dot">${TICK}</span>Focus: ${S.focus.toLowerCase()}</div>
+      <div class="loadline" id="ld3"><span class="dot">${TICK}</span>${S.pace} min a day · ${hoursMonth()} h a month</div>
+      <div class="loadline" id="ld4"><span class="dot">${TICK}</span>Topics from ${S.interests.slice(0,2).join(' and ').toLowerCase()}</div>
+    </div>
+    <div style="margin-top:auto"></div>
+  </div>
+  <div class="scr-foot"><button class="cta" id="loadcta" disabled onclick="go('payoff')">Get my Personal Plan</button></div>`,
+
+payoff: `<div class="scr-top" style="padding-top:56px">${nav(16,N)}</div>
+  <div class="scr-body">
+    <div class="hero"><h3>Your ${S.learn} plan is ready, ${S.name}!</h3>
+      <div class="stack"><img src="img/face-a.png" alt=""><img src="img/face-b.png" alt=""><img src="img/face-alej.png" alt=""><img src="img/guide-face.png" alt=""><span class="more"></span></div>
+      <div class="cnt">+24 unique tutors</div>
+      <img class="face" src="img/guide-smile-cut.png" alt=""></div>
+    <div class="facts">
+      <div class="fact"><span class="ic">🕐</span><div><div class="k">Duration</div><div class="v">${S.pace} minutes a day</div></div></div>
+      <div class="fact"><span class="ic">${S.goalIcon}</span><div><div class="k">Goal</div><div class="v">${S.goal}</div></div></div>
+      <div class="fact"><span class="ic">🎯</span><div><div class="k">Focus</div><div class="v">${S.focus}</div></div></div>
+      <div class="fact"><span class="ic">📈</span><div><div class="k">Starting level</div><div class="v">${S.level} — ${S.levelLab.toLowerCase()}</div></div></div>
+    </div>
+    ${chart()}
+    <p class="foot-note" style="text-align:left;margin:0 0 6px">Keep ${S.pace} minutes a day and you pass <b>10 hours of speaking practice</b> around ${fmt(tenHourDate())}.</p>
+  </div>
+  <div class="scr-foot"><button class="cta" onclick="go('paywall')">Continue</button></div>`,
+
+paywall: `<div class="scr-top" style="padding:52px 20px 0">
+    <div style="display:flex"><button class="scr-back" onclick="go('offer')" aria-label="Close">✕</button></div></div>
+  <div class="scr-body" style="padding-top:12px">
+    <div class="tiles">
+      <div class="tile"><img src="img/guide-face.png" alt=""><div class="scrim"></div><div class="big">4.7★</div><span>164K App Store ratings</span></div>
+      <div class="tile p"><div class="stars">★★★★★</div><b>Premium tutor rating</b><span>100K+ 5-star reviews</span></div>
+      <div class="tile"><img src="img/alejandro.png" alt=""><div class="scrim"></div><b>Unlimited lesson time</b><span>No daily cap</span></div>
+      <div class="tile b"><b>Your personal study plan</b><span>${S.goal} · ${S.pace} min a day</span></div>
+      <div class="tile"><img src="img/face-a.png" alt=""><div class="scrim"></div><b>AI realtime feedback</b><span>Grammar, words, accent</span></div>
+    </div>
+    <div style="text-align:center"><span class="goalchip">${S.goalIcon} ${S.goal} · ${S.pace} min a day · level ${S.level}</span></div>
+    <h2 class="scr-h2" style="text-align:center;font-size:25px;line-height:1.2">Get full access to your<br><span style="color:var(--pk-blue)">${S.goal} ${S.learn} plan</span></h2>
+    <p class="scr-sub" style="text-align:center;margin:8px 0 6px;font-size:14.5px;color:var(--pk-ink-2)"><b>1 week</b> free then <b>$99.99</b> annually</p>
+    <p style="text-align:center;margin:0 0 18px;font-size:13.5px;font-weight:700;color:var(--pk-blue)">🎉 50x cheaper than a tutor</p>
+    <div class="cmp">
+      <div class="hd"><b>&nbsp;</b><b>Free</b><b>Premium</b></div>
+      <div class="rw"><span>Lesson time</span><span>10 min/day</span><span class="ys">Unlimited</span></div>
+      <div class="rw"><span>Tutors</span><span>2</span><span class="ys">24+</span></div>
+      <div class="rw"><span>Realtime feedback</span><span class="no">—</span><span class="ys">✓</span></div>
+      <div class="rw"><span>Your ${S.goal.toLowerCase()} study plan</span><span class="no">—</span><span class="ys">✓</span></div>
+    </div>
+    <div style="position:relative;padding-top:10px">
+      <button class="plan ${S.plan==='year'?'on':''}" onclick="set('plan','year')"><span class="badge">Free trial · Best value</span>
+        <div><div class="nm">Year</div><div class="pr">$8 / month · <b>save $45 a year</b></div></div><span class="rd">${TICK}</span></button>
+      <button class="plan ${S.plan==='q'?'on':''}" onclick="set('plan','q')">
+        <div><div class="nm">3 Months</div><div class="pr">$12 / month</div></div><span class="rd">${TICK}</span></button>
+    </div>
+    <div class="toggle-row"><span>You will be notified on: <b>${fmt(addD(5))}</b></span>
+      <div class="tg ${S.notify?'':'off'}" onclick="S.notify=!S.notify;render()"><i></i></div></div>
+    <p class="foot-note" style="margin:10px 0 0;font-size:11.5px">4.7★ from 164K ratings · 30M+ learners</p>
+  </div>
+  <div class="scr-foot">
+    <p class="foot-note">No charge today. Cancel anytime.</p>
+    <button class="cta" onclick="congrats()">${S.plan==='year'?'Start for Free':'Start for $12 / month'}</button>
+    <p class="foot-note" style="margin:12px 0 0;font-size:12px">Restore purchase</p>
+  </div>`,
+
+offer: `<div class="scr-top" style="padding:52px 20px 0">
+    <div style="display:flex"><button class="scr-back" onclick="go('paywall')" aria-label="Close">✕</button></div></div>
+  <div class="scr-body" style="padding-top:8px">
+    <div class="laurel"><span class="lv">🌿</span><div style="text-align:center">
+      <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--pk-purple)">One-time offer</div>
+      <div style="font-size:12px;font-weight:600;color:var(--pk-muted)">for ${S.name}</div></div><span class="lv" style="transform:scaleX(-1)">🌿</span></div>
+    <h2 class="scr-h2" style="text-align:center;font-size:25px;line-height:1.2;margin-top:8px">Don't lose your<br><span style="color:var(--pk-blue)">${S.goal} ${S.learn} plan</span></h2>
+    <p class="scr-sub" style="text-align:center;margin:8px 0 18px">${S.level} start · ${S.focus.toLowerCase()} · ${S.pace} min a day</p>
+    <div style="background:var(--pk-card);border-radius:var(--r-media);padding:18px 16px 16px;margin-bottom:16px">
+      <div class="tl">
+        <div class="step"><b>Today</b><span>Full Premium unlocks — ${S.tutor} and 24 more tutors, unlimited lesson time.</span></div>
+        <div class="step mut"><b>${fmt(addD(60))}</b><span>We remind you before it renews — the same reminder toggle you set a moment ago.</span></div>
+        <div class="step mut"><b>${fmt(addD(90))}</b><span>3 months end. Cancel any time before then in Settings.</span></div>
+      </div>
+    </div>
+    <button class="plan on" style="margin-bottom:8px"><span class="badge gold">Cheapest plan Praktika sells</span>
+      <div><div class="nm">Praktika Premium — 3 months</div>
+        <div class="pr"><s>$49.99</s>$19.99 · $6.66 / month</div></div><span class="rd">${TICK}</span></button>
+    <p class="foot-note" style="text-align:left;margin:0 0 4px">That is <b>$1.34 a month less</b> than the annual plan you just saw, and it is the promo SKU listed on Praktika's own App Store page.</p>
+  </div>
+  <div class="scr-foot">
+    <p class="foot-note">Cancel anytime.</p>
+    <button class="cta" onclick="congrats(true)">Get 3 months for $19.99</button>
+    <button class="cta ghost sm" style="margin-top:10px" onclick="go('paywall')">Keep my free week instead</button>
+  </div>`
+};}
+
+const ORDER=['welcome','learn','native','goals-intro','goal','skills','level','focus','pace','about','interests','proof','tutor','quickchat','chat','loader','payoff','paywall','offer'];
+const LABEL={welcome:'Welcome',learn:'Language',native:'Native',"goals-intro":'Goals intro',goal:'Why',skills:'Situations',level:'Level',focus:'Focus',pace:'Pace + chart',about:'About you',interests:'Interests',proof:'Proof',tutor:'Tutor',quickchat:'Quick Chat',chat:'The chat',loader:'Loader',payoff:'Your plan',paywall:'Paywall',offer:'Offer paywall'};
+const SHEETS=['offer'];
+const DARK=[];
+</script>
+<script>
+/* ═══ side panel ══════════════════════════════════════════════════════════ */
+const PANEL = {
+welcome:{t:'Welcome',tags:['kept','moved'],
+ why:"The opening screen ships as it is — the tutor filling the frame, the name band over his chest, the two-button sheet. What changed is what is no longer on top of it. In the live flow the App Tracking Transparency dialog fires on screen 2, before a single screen of value has been shown, and the push-notification dialog follows a few taps later. Both now run after the paywall. A system dialog early in a flow teaches the fastest possible habit: dismiss whatever Praktika puts in front of me.",
+ kept:"The full-bleed cut-out tutor on white, the dark rounded name band, the rounded-square logo mark above the sheet, the Get Started / Log in pair, and the underlined Privacy Policy / Terms line at 11px.",
+ ship:"Screen 1, with the tracking dialog overlaying screen 2 and the notification dialog overlaying the language question. Both moved past the paywall.",
+ iv:'CR +10–15%',il:'Permissions moved past the paywall'},
+
+learn:{t:'Language you want to learn',tags:['kept'],
+ why:"First real question, unchanged, and it is the right one to open on — it is the only answer that changes every screen after it. The interstitial that used to sit between here and the goal block now names this answer back instead of saying nothing.",
+ kept:"The 42px circular tutor avatar with the white bubble beside it, the flag-led rows, the greyed 'Coming soon ...' section below the live languages, and the segmented progress bar.",
+ ship:"Same position in the sequence. The notification permission dialog that overlaid it is gone.",
+ iv:'CR +10–15%',il:'Permissions moved past the paywall'},
+
+native:{t:'Your native language',tags:['kept'],
+ why:"Kept exactly, including the search field, because this is the answer behind the line the tutor card carries later — 'Teaches in English'. It is used, so it earns its screen.",
+ kept:"The search field with the magnifier, the flag rows in their shipping order, and the tap-to-advance behaviour with no Continue button.",
+ ship:"Same position.",
+ iv:'—',il:'Personalization input, unchanged'},
+
+'goals-intro':{t:"Awesome! Let's talk about your goals",tags:['merged'],
+ why:"Four full-screen interstitials in the live flow say 'Awesome!', 'Perfect!', 'Great!' and 'Let me introduce my friends' — four taps that ask nothing and tell the user nothing they did not already know. Two survive. This one now names the language just chosen, which turns a pure delay into goal reinforcement, and the other two are folded into the screens they used to introduce.",
+ kept:"The big blue centred headline, the cut-out tutor bottom-aligned on white, and the docked Continue — the composition is theirs, only the sentence changed.",
+ ship:"Was a generic 'Awesome! Now, let's talk about your goals!'. The 'Perfect! Let's talk about your previous experience!' and 'Great! Now tell me about yourself.' screens are gone; their copy now heads the screens that follow.",
+ iv:'CR +3–8%',il:'Goal reinforcement mid-flow'},
+
+goal:{t:'Why do you want to learn',tags:['kept'],
+ why:"The single most valuable answer in the flow and the one the shipping paywall never mentions. It is kept untouched here and then carried all the way through — the loader names it, the payoff card names it, and the paywall headline is built out of it.",
+ kept:"The five options and their wording, the 3D emoji tiles in white rounded squares, and tap-to-advance with no Continue.",
+ ship:"Same position and same options.",
+ iv:'CR +15–20%',il:'Goal named on the paywall'},
+
+skills:{t:'Situations you want to handle',tags:['kept'],
+ why:"Multi-select kept in full. In the live flow this is the second of two screens that read almost identically — this one and 'What language skills do you need to improve?'. They are genuinely different questions (situations versus mechanics) so both stay, but they are now separated by the level question so they no longer feel like the same screen twice.",
+ kept:"All eight options, the icon tiles, the multi-select tick in the trailing circle, and the Continue that only lights once something is chosen.",
+ ship:"Sat immediately before the accent question. Now runs into the level question.",
+ iv:'—',il:'Kept in full'},
+
+level:{t:'Your current level',tags:['merged'],
+ why:"The live flow asks two questions about history: 'Have you learnt Spanish before?' (School, Language school, College, Personal tutor, Self-educated, Abroad, No experience) and then the A1–C2 level. Only the second one is used anywhere. The first was cut — A1 'I'm new to this language' already carries the no-experience answer, and nothing downstream ever referenced where someone studied.",
+ kept:"The A1–C2 cards with the code in blue on the left and the plain-English description beside it, in their exact wording.",
+ ship:"Was screen 3 of the 'previous experience' block, after the where-did-you-learn question. It now opens the block, and the level it captures is confirmed again in Quick Chat and printed on the plan card.",
+ iv:'CR +5–10%',il:'Inert question removed'},
+
+focus:{t:'What you want to improve',tags:['kept'],
+ why:"Kept whole, because this answer is the 'Focus' row on the plan card — one of the few places the shipping flow already visibly consumes an answer. That link is preserved and extended to the loader and the paywall chip.",
+ kept:"All seven options with their icons and their exact copy, including 'Read news, articles and researches'.",
+ ship:"Same position inside the experience block.",
+ iv:'—',il:'Feeds the plan card'},
+
+pace:{t:'Minutes a day + projection',tags:['kept'],
+ why:"The best control in the flow, and it is rebuilt as a working one rather than a picture of one. Choose 30 minutes and the headline, the curve, the marker positions, the plan card's Duration row and the practice-hours date all move together. The dotted guide curves are the other pace options, so the chart shows what a heavier commitment would look like without claiming an outcome it cannot model.",
+ kept:"The lavender chart panel, the blue headline with the grey sub-line beneath it, the fanned dotted guide curves, the solid blue curve with its open circle markers and the larger ringed marker at the end, the Today / date / date axis, and the six-cell 2-column minute grid.",
+ ship:"Same position. The curve was static; it now recomputes, and the line beneath it states the practice-hours milestone in plain arithmetic instead of leaving the chart to imply one.",
+ iv:'CR +10–15%',il:'Answers visibly consumed'},
+
+about:{t:'About you',tags:['merged'],
+ why:"Gender, age and name were three consecutive screens each holding one short question — three taps and two screen transitions for three fields that belong together. They are now one screen. The name stays because the tutor uses it out loud in Quick Chat and on the plan card; age and gender stay because they steer tutor matching.",
+ kept:"Every option and every label, the same card styling, and the name field with its blue focus border.",
+ ship:"Three screens: 'What's your gender?', 'How old are you?' and 'What is your name?', each behind the 'Great! Now tell me about yourself.' interstitial. That interstitial's line now heads this screen.",
+ iv:'CR +5–10%',il:'Three screens merged into one'},
+
+interests:{t:'Hobbies and interests',tags:['kept'],
+ why:"Kept in full. In the live flow this is the last thing asked before the tutor appears and it is never referred to again — here the Quick Chat opens on one of these topics and the loader names them, so the screen pays for itself.",
+ kept:"The 2-column grid, all fourteen options in their shipping order, the icon tiles and the multi-select behaviour.",
+ ship:"Same position, but the answer now surfaces in the Quick Chat prompt and on the loader.",
+ iv:'CR +5–10%',il:'Answers visibly consumed'},
+
+proof:{t:'Proof before the ask',tags:['new'],
+ why:"Praktika's proof is unusually strong and almost none of it is in the flow: 4.7 stars from 164K App Store ratings, 30M+ learners and 100K+ five-star reviews. In the shipping flow the only proof anywhere is a small rating tile inside the paywall carousel. It is placed here, immediately before the screen that asks someone to speak a foreign language out loud into a microphone — the largest commitment in the flow and the moment credibility matters most. The same figures then appear again beside the paywall CTA.",
+ kept:"Their lavender card surface, the radius, and the tutor-bubble type scale. The quotes are App Store reviews reproduced verbatim with the reviewer handle.",
+ ship:"Nothing sat here. Proof existed only as one tile on the paywall.",
+ iv:'CR +10–15%',il:'Social proof at the decision point'},
+
+tutor:{t:'Meet your tutor',tags:['merged'],
+ why:"Three screens became one. The live flow asks 'Which accent are you interested in?' with two options, then plays a full-screen 'Let me introduce my friends to you.' interstitial, then lands on a tutor screen that is one card and eighty percent empty white — with European / Spanish / Mexican tabs that ask the accent question a second time. The interstitial's headline and waving tutor now head this screen, and the accent tabs are the accent question.",
+ kept:"The waving tutor, the headline verbatim, the three-tab accent row with the filled blue active state, the selected tutor card with its photo, personality chips, 'Teaches in your native language' line and blue check, and the 'Start learning with Alejandro' CTA.",
+ ship:"Three screens: the accent question, the interstitial, and the tutor picker. The picker's tabs duplicated the accent question one screen later.",
+ iv:'CR +5–10%',il:'Duplicate question merged'},
+
+quickchat:{t:'Quick Chat intro',tags:['kept','moved'],
+ why:"Kept almost exactly, with one change: the microphone dialog does not fire here. In the live flow the iOS mic prompt appears over this screen before the user has decided to speak. It now fires on the first press of the mic button inside the chat, which is the moment the permission is actually needed and the moment someone is most willing to grant it. The second card explains why the mic is needed before the system asks — a soft prompt in their own bubble styling.",
+ kept:"The blue Quick Chat headline, the lavender media card with the tutor and the 1 min chip, the flag-led greeting bubble using the name captured earlier, and the Let's go! / Skip Quick chat pair.",
+ ship:"Same position, with the microphone system dialog on top of it.",
+ iv:'CR +10–15%',il:'Permission made contextual'},
+
+chat:{t:'The Quick Chat',tags:['kept'],
+ why:"Untouched. This is the strongest thing in the flow and nothing in the pattern library beats it: before paying, the user has a real conversation in the target language, makes a mistake, and gets a gentle correction with an explanation. Most subscription onboardings promise value; this one delivers it. The only edit is that the level it reports back is the level the flow captured, so the two agree.",
+ kept:"The video card, the Spanish conversation verbatim, the green Feedback chip, the 'It is better to say' / 'Explanation' bottom sheet with its green tick and amber question mark, the mic button, and the 'Lesson complete' close.",
+ ship:"Same position and same content.",
+ iv:'—',il:'The flow’s strongest asset, left alone'},
+
+loader:{t:'Building your plan',tags:['kept','moved'],
+ why:"Two changes. The App Store rating prompt that fires part-way through this loader in the live flow is gone — it interrupts the highest-intent moment in the entire funnel, one screen before the paywall, and it spends the single annual review prompt iOS allows on someone who has not used the app yet. And the loader now names the actual answers as it ticks, so the wait is visibly doing something rather than counting.",
+ kept:"The circular progress ring with the number counting inside it, the blue stroke on the light track, and the 'Get my Personal Plan' CTA that unlocks at 100.",
+ ship:"The rating prompt appeared around 51% and the star-rating thank-you around 72%. Both moved past the paywall, where a rating request follows a real purchase instead of interrupting one.",
+ iv:'CR +10–15%',il:'Answers visibly consumed'},
+
+payoff:{t:'Your plan is ready',tags:['kept'],
+ why:"The payoff screen is why this flow earns the personalization loop at all — most apps run a loader with nothing behind it. Praktika already computes a real plan here. It is kept and extended with the starting level from Quick Chat and the practice-hours date, so every answer the flow took has a visible destination.",
+ kept:"The blue hero card with the tutor cut into the right edge, the overlapping avatar stack with '+24 unique tutors', the Duration / Goal / Focus rows with their icon tiles, and the projection chart repeated below.",
+ ship:"Same position and same structure, with two rows added.",
+ iv:'CR +10–20%',il:'Personalization payoff, extended'},
+
+paywall:{t:'Paywall',tags:['kept','new'],
+ why:"The composition is theirs and stays theirs: the scrolling benefit-tile carousel, the two-line headline with the second line in blue, the trial sub-line, the '50x cheaper than a tutor' line, the two plan cards, the reminder toggle and Start for Free. Four things changed. The headline now names the goal the flow spent nineteen screens capturing — the shipping headline says 'your personal AI tutor' one screen after a card that said Travel. A goal chip sits above it. The annual card carries a Best value badge and the saving in money. And the real proof sits next to the CTA instead of only in a tile.",
+ kept:"The horizontal tile carousel with the purple laurel rating tile, the headline structure and its blue second line, '1 week free then $99.99 annually', the 🎉 50x cheaper line, both plan cards with their trailing radios, the 'You will be notified on' row with the blue toggle, Cancel anytime, Start for Free and Restore purchase.",
+ ship:"Headline was generic. No badge on the annual card, no saving stated, no comparison, and the only proof was one tile at the top of the carousel. Closing it ended the flow.",
+ iv:'CR +15–20%',il:'Goal-personalized paywall'},
+
+offer:{t:'Offer paywall on close',tags:['new'],
+ why:"In the live flow the X closes the paywall and that is the end of the funnel. This is the single largest missed lever here, and Praktika already has the SKU to build it on: their App Store page lists 'Praktika Premium 3 Month Promo' at $19.99 — $6.66 a month against the annual plan's $8. It is a different archetype from the main paywall on purpose: that one is a trial-led two-plan picker, this one is a single-SKU price step-down with the billing dates spelled out, and the route back to the free week is kept open. Reachable from the X on the paywall and from its own chip below the phone.",
+ kept:"Their card radius and lavender surfaces, the purple laurel treatment from the paywall's rating tile, the plan card with its trailing check, and the 'Cancel anytime' line above the CTA.",
+ ship:"Nothing. Closing the paywall ended the flow.",
+ iv:'ARPU +10–15%',il:'Second-chance offer after the paywall'}
+};
+
+/* ═══ tab 2 ═══════════════════════════════════════════════════════════════ */
+const ROWS=[
+['Fix first','Offer paywall on close',"Closing the paywall ends the flow today. Now the X opens a second screen offering the 3-month plan Praktika already sells for $19.99.",'ARPU +10–15%'],
+['Fix first','Paywall names the goal',"The paywall says “your personal AI tutor” one screen after a card that said Travel. It now says “your Travel Spanish plan” and shows the goal, the pace and the level above the headline.",'CR +15–20%'],
+['High','Permission prompts moved',"Tracking, notifications and the microphone are all requested before the paywall, the first one on screen 2. They now run after the paywall, and the mic is asked at the moment the user presses it.",'CR +10–15%'],
+['High','Rating prompt out of the loader',"The App Store rating request fires in the middle of “we’re creating your plan”, one screen before the paywall. It moves to after the purchase.",'CR +8–12%'],
+['High','Real proof before the ask',"4.7 stars from 164K ratings and 30M+ learners appear nowhere in the flow. They now sit on their own screen before the speaking test, and beside the paywall button.",'CR +10–15%'],
+['High','Free vs Premium comparison',"The paywall lists no difference between free and paid. Four rows above the plans show what changes.",'CR +10–20%'],
+['Medium','Saving shown in money',"The annual plan says $8 a month and the 3-month plan says $12, with nothing connecting them. The annual card now says it saves $45 a year.",'CR +5–15%'],
+['Medium','Best value badge',"Neither plan is marked as the recommended one. The annual plan gets the badge.",'ARPU +5–10%'],
+['Medium','Loader shows the answers',"The loader counts to 100 and says nothing. It now names the goal, the level, the focus, the pace and the topics as it fills.",'CR +10–15%'],
+['Medium','Name, age and gender merged',"Three screens in a row each ask one short question. They are now one screen.",'CR +5–10%'],
+['Medium','Accent question merged',"The accent is asked on its own screen, then asked again by the tabs on the tutor screen two taps later. The tutor screen keeps the tabs; the separate screen is gone.",'CR +5–10%'],
+['Low','Four interstitials cut to two',"“Awesome!”, “Perfect!”, “Great!” and “Let me introduce my friends” are four full screens that ask nothing. Two remain, and they now name what the user just chose.",'CR +3–8%']
+];
+
+/* ═══ sources ═════════════════════════════════════════════════════════════ */
+const SRC=[
+['4.7★ from 164K ratings, #86 in Education',"Praktika – AI Language Tutor, live US App Store listing.",'https://apps.apple.com/us/app/praktika-ai-language-tutor/id1624701477'],
+['30M+ learners · 4.8 from 1.2M+ ratings · 100K+ 5-star reviews',"praktika.ai homepage.",'https://praktika.ai/'],
+['“Duolingo Who? Great News for Polyglots” — sativashawdy',"App Store review, reproduced verbatim and trimmed with an ellipsis. No wording added.",'https://apps.apple.com/us/app/praktika-ai-language-tutor/id1624701477'],
+['“This app is incredible!” — Jeanne Marie Hoffman',"App Store review, reproduced verbatim and trimmed.",'https://apps.apple.com/us/app/praktika-ai-language-tutor/id1624701477'],
+['$99.99 a year, 1 week free, “$8 / month”, “3 Months $12 / month”',"Praktika’s own paywall and the App Store purchase sheet in the supplied capture frames.",''],
+['“50x cheaper than a tutor”',"Praktika’s own paywall copy, and the laurel badge on their App Store screenshots.",'https://apps.apple.com/us/app/praktika-ai-language-tutor/id1624701477'],
+['Praktika Premium 3 Month Promo — $19.99 (the offer paywall SKU)',"In-App Purchase list on the live App Store listing. Also listed there: Praktika Premium 3 Months $49.99, Praktika Premium 1 Year $119.99 and $139.99, Praktika Premium 3 Mon + Trial $49.99, Praktika Premium 1 month $9.99.",'https://apps.apple.com/us/app/praktika-ai-language-tutor/id1624701477'],
+['“Save $45 a year” on the annual card',"Arithmetic on Praktika’s own displayed prices: $12/month on the 3-month plan is $144 a year against $99.99 for the annual plan.",''],
+['“$6.66 / month” and “$1.34 a month less” on the offer screen',"Arithmetic on the store-listed $19.99 for 3 months against the $8 / month shown on Praktika’s own annual card.",''],
+['24+ tutors',"Praktika’s own payoff screen: “+24 unique tutors”.",''],
+['Unlimited lesson time · AI realtime feedback · Your personal study plan',"Verbatim from the benefit tiles on Praktika’s own paywall carousel.",''],
+['Tutor names, accents and personality chips',"Praktika’s own tutor screen (Alejandro, Spanish, Energetic / Vibrant / Sporty, “Teaches in your native language”) and the App Store description.",'https://apps.apple.com/us/app/praktika-ai-language-tutor/id1624701477'],
+['The Spanish conversation and the correction sheet',"Transcribed verbatim from the supplied Quick Chat frames.",''],
+['Practice-hours projection ( “2.5 hours per month”, the 10-hour date )',"Arithmetic on the minutes-per-day answer, the same calculation Praktika’s own chart headline makes. It projects practice time only — never a fluency outcome.",''],
+['Avatar photography',"Cropped out of the supplied capture frames with sips. Nothing was sourced from stock and nothing was upscaled.",'']
+];
+const SRC_OUT=[
+['“4.9★”','Praktika’s own paywall tile reads 4.9, the live App Store listing reads 4.7 from 164K ratings, and praktika.ai reads 4.8 from 1.2M+ ratings. The App Store figure is used because it is the one a prospect can check today; the 4.9 was not reproduced.'],
+['Trial length on the $19.99 3-month promo','Apple does not tag it and no Praktika screen shows it. The offer paywall therefore sells the plan directly and makes no trial claim on it.'],
+['The period behind “Praktika Premium $6.99” and “Praktika Premium $39.99”','Both are listed on the App Store with no duration. They were left out rather than guessed at, so the offer paywall uses the one promo SKU whose period is stated.'],
+['Fluency outcome claims ( “reach B1 in X weeks” )','Praktika publishes no outcome data. The chart projects practice hours, which is arithmetic, and no level-progress promise appears anywhere in the build.'],
+['Press logos and partnerships','None found in Praktika’s published material. The slot was left out rather than filled.'],
+['“20M+ learners worldwide”','On Praktika’s App Store screenshot laurel, while praktika.ai says 30M+. The site figure is used as the current one and the discrepancy is noted here.']
+];
+</script>
+<script>
+/* ═══ router ══════════════════════════════════════════════════════════════ */
+let cur='welcome', hist=[], loadT=null;
+const wrap=document.getElementById('wrap');
+
+function render(){
+  const defs=screens();
+  wrap.querySelectorAll('.scr').forEach(n=>n.remove());
+  ORDER.forEach(id=>{
+    const s=document.createElement('section');
+    s.className='scr'+(SHEETS.includes(id)?' sheet':'')+(id==='chat'?' chat':'');
+    s.dataset.id=id; s.innerHTML=defs[id];
+    if(id===cur) s.classList.add('is-active');
+    else if(hist.includes(id)) s.classList.add('is-past');
+    wrap.appendChild(s);
+  });
+  wrap.classList.toggle('dark',DARK.includes(cur));
+  if(cur==='chat') paintChat();
+  paintChips(); paintPanel();
+}
+function go(id){
+  if(id===cur) return;
+  if(!hist.includes(cur)) hist.push(cur);
+  cur=id; render();
+  if(id==='loader') runLoader();
+}
+function back(){
+  if(!hist.length) return;
+  const prev=hist.pop(); cur=prev; render();
+}
+function jump(id){
+  const i=ORDER.indexOf(id);
+  hist=ORDER.slice(0,i).filter(x=>!SHEETS.includes(x));
+  cur=id; render();
+  wrap.querySelectorAll('.scr').forEach(n=>{n.classList.add('nofx');requestAnimationFrame(()=>requestAnimationFrame(()=>n.classList.remove('nofx')));});
+  if(id==='loader') runLoader();
+}
+function set(k,v){ S[k]=v; render(); }
+function multi(k,v){ const a=S[k]; const i=a.indexOf(v); i<0?a.push(v):a.splice(i,1); render(); }
+function filterLang(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('#langlist .opt').forEach(b=>{ b.style.display=b.dataset.l.toLowerCase().includes(q)?'':'none'; });
+}
+
+/* ═══ loader ══════════════════════════════════════════════════════════════ */
+function runLoader(){
+  clearInterval(loadT); let p=0;
+  const c=document.getElementById('ringc'), n=document.getElementById('ringn'), cta=document.getElementById('loadcta');
+  if(!c) return;
+  loadT=setInterval(()=>{
+    p+=2; if(p>100){p=100;clearInterval(loadT);}
+    n.textContent=p; c.setAttribute('stroke-dashoffset', 364-364*p/100);
+    for(let i=0;i<5;i++){ const el=document.getElementById('ld'+i); if(el) el.classList.toggle('on', p>=(i+1)*17); }
+    if(p===100&&cta){ cta.disabled=false; }
+  },28);
+}
+
+/* ═══ quick chat ══════════════════════════════════════════════════════════ */
+const TURNS=[
+ {them:"¡Hola, "+'@N'+"!\n\n¡Bienvenido a Praktika! Me llamo @T y soy tu AI Tutor personal.\n\nAhora, mantén pulsado este botón azul del micrófono y di «¡Hola!»"},
+ {me:"¡Hola!", fb:"Perfecto, ¡lo has clavado!", them:"Ahora vamos a tener una pequeña conversación para comprobar tu nivel de español y crear tu plan de estudio.\n\nEscuché que tu objetivo al aprender español es @G. ¿Cuál es un país hispanohablante que te gustaría visitar y por qué?"},
+ {me:"españa", sheet:true, them:"¡Excelente elección! España tiene una rica cultura y muchas cosas que ver."},
+ {me:"Sí, y me gusta la música", them:"¡Genial, gracias! Según nuestra conversación, tu español está en el nivel @L.\n\n¡Empecemos tu viaje de aprendizaje! Ahora estoy preparando tu plan de estudio personal.", done:true}
+];
+const sub = t => t.replace(/@N/g,S.name).replace(/@T/g,S.tutor).replace(/@L/g,S.level)
+  .replace(/@G/g, S.goal==='Travel'?'poder viajar a cualquier lugar con facilidad':('«'+S.goal.toLowerCase()+'»'));
+
+function paintChat(){
+  const log=document.getElementById('chatlog'), foot=document.getElementById('chatfoot');
+  if(!log) return;
+  let h='', sheet=false;
+  for(let i=0;i<=S.chatTurn && i<TURNS.length;i++){
+    const t=TURNS[i];
+    if(t.me) h+=`<div class="msg me">${sub(t.me)}</div>`;
+    if(t.fb) h+=`<div class="fbwrap"><span class="fb">✓ Feedback · ${t.fb}</span></div>`;
+    if(t.them && (i<S.chatTurn || !t.sheet)) h+=`<div class="msg them">${sub(t.them)}</div>`;
+    if(t.sheet && i===S.chatTurn) sheet=true;
+  }
+  const last=TURNS[Math.min(S.chatTurn,TURNS.length-1)];
+  if(last.done && S.chatTurn>=TURNS.length-1) h+=`<div class="done">🎉 Lesson complete</div>`;
+  log.innerHTML=h;
+  const body=document.getElementById('chatbody'); if(body) body.scrollTop=body.scrollHeight;
+
+  const done = S.chatTurn>=TURNS.length-1 && last.done;
+  foot.innerHTML = done
+    ? `<button class="cta" onclick="S.chatTurn=0;go('loader')">Finish onboarding</button>`
+    : `<button class="mic" onclick="nextTurn()" aria-label="Hold to speak"><svg viewBox="0 0 24 30"><path d="M12 18a5 5 0 0 0 5-5V6a5 5 0 0 0-10 0v7a5 5 0 0 0 5 5zm8-5a1.4 1.4 0 0 0-2.8 0 5.2 5.2 0 0 1-10.4 0A1.4 1.4 0 0 0 4 13a8 8 0 0 0 6.6 7.9V24H8.2a1.4 1.4 0 0 0 0 2.8h7.6a1.4 1.4 0 0 0 0-2.8h-2.4v-3.1A8 8 0 0 0 20 13z"/></svg></button>
+       <p class="foot-note" style="margin:10px 0 0">${S.chatTurn===0?'Hold to speak — the mic is requested on this tap, not before':'Hold to speak'}</p>`;
+
+  const old=document.querySelector('.sheet-card'); if(old) old.remove();
+  if(sheet){
+    const scr=wrap.querySelector('.scr[data-id="chat"]');
+    const el=document.createElement('div'); el.className='sheet-card';
+    el.innerHTML=`<div class="r"><span class="ic" style="background:#17A34A">✓</span><div><b>It is better to say</b><p>España</p></div></div>
+      <div class="r"><span class="ic" style="background:#F5A623">?</span><div><b>Explanation</b><p>«España» is a proper noun and the name of a country. It should always be capitalised in Spanish, so there are no grammar or vocabulary mistakes here.</p></div></div>`;
+    scr.appendChild(el);
+    const bb=document.getElementById('chatbody'); if(bb){bb.style.paddingBottom='190px'; bb.scrollTop=bb.scrollHeight;}
+  }
+  if(S.chatTurn===0 && !sessionStorage.getItem('mic')){
+    const scr=wrap.querySelector('.scr[data-id="chat"]');
+    const d=document.createElement('div'); d.className='dlg-bg'; d.id='micdlg'; d.style.display='none';
+    d.innerHTML=`<div class="dlg"><div class="bd"><h5>“Praktika” Would Like to Access the Microphone</h5>
+      <p>This app uses the mic to record your answers for speaking practice.</p></div>
+      <div class="btns"><button onclick="micOk()">Don’t Allow</button><button onclick="micOk()">Allow</button></div></div>`;
+    scr.appendChild(d);
+  }
+}
+function nextTurn(){
+  const d=document.getElementById('micdlg');
+  if(d && d.style.display==='none' && S.chatTurn===0){ d.style.display='grid'; return; }
+  if(S.chatTurn<TURNS.length-1) S.chatTurn++;
+  paintChat();
+}
+function micOk(){ sessionStorage.setItem('mic','1'); const d=document.getElementById('micdlg'); if(d) d.remove(); S.chatTurn++; paintChat(); }
+
+/* ═══ purchase ════════════════════════════════════════════════════════════ */
+function congrats(isOffer){
+  const scr=wrap.querySelector('.scr.is-active');
+  const old=scr.querySelector('.dlg-bg'); if(old) old.remove();
+  const d=document.createElement('div'); d.className='dlg-bg';
+  d.innerHTML=`<div style="width:300px;background:#fff;border-radius:22px;padding:26px 20px;text-align:center">
+    <h3 style="margin:0;font:800 23px/1.2 'Plus Jakarta Sans',sans-serif;color:var(--pk-ink)">Congratulations!</h3>
+    <p style="margin:6px 0 16px;font:600 13px 'Plus Jakarta Sans',sans-serif;color:var(--pk-muted)">You are all set!</p>
+    <div style="font:800 19px 'Plus Jakarta Sans',sans-serif;color:var(--pk-gold)">${isOffer?'3 months':'Annually'}</div>
+    <div style="display:inline-block;background:var(--pk-gold);color:#fff;font:800 15px 'Plus Jakarta Sans',sans-serif;padding:9px 22px;border-radius:20px;margin:8px 0">PREMIUM 👑</div>
+    <div style="font:800 15px 'Plus Jakarta Sans',sans-serif;color:var(--pk-gold);margin-bottom:14px">${isOffer?'$19.99 charged today':'with 1 week promo'}</div>
+    <p style="margin:0 0 14px;font:600 12px 'Plus Jakarta Sans',sans-serif;color:var(--pk-ink-2)">Premium access till ${fmt(addD(isOffer?90:372))} ${new Date().getFullYear()+(isOffer?0:1)}</p>
+    <button class="cta" onclick="this.closest('.dlg-bg').remove()">Start practicing</button>
+    <p style="margin:12px 0 0;font:600 11px 'Plus Jakarta Sans',sans-serif;color:var(--pk-muted)">Tracking, notifications and the rating request run here — after the purchase, not before it.</p>
+  </div>`;
+  scr.appendChild(d);
+}
+
+/* ═══ chips ═══════════════════════════════════════════════════════════════ */
+function paintChips(){
+  document.getElementById('chips').innerHTML = ORDER.map((id,i)=>
+    `<button class="${id===cur?'on':''}${id==='offer'?' offer':''}" onclick="jump('${id}')">${i+1}. ${LABEL[id]}</button>`).join('');
+}
+
+/* ═══ panel ═══════════════════════════════════════════════════════════════ */
+function paintPanel(){
+  const d=PANEL[cur]; if(!d) return;
+  const i=ORDER.indexOf(cur)+1;
+  document.getElementById('panel').innerHTML=`
+    <p class="pn-step">Step ${i} of ${ORDER.length}</p>
+    <h2 class="pn-t">${d.t}</h2>
+    <div class="pn-tags">${d.tags.map(t=>`<i class="tg-${t}">${t}</i>`).join('')}</div>
+    <p class="pn-lab">Rationale</p><p class="pn-p">${d.why}</p>
+    <p class="pn-lab">Kept from your app</p><p class="pn-p">${d.kept}</p>
+    <p class="pn-lab">In the shipping flow</p><p class="pn-p">${d.ship}</p>
+    <div class="pn-imp"><div class="v">${d.iv}</div><div class="l">${d.il}</div></div>
+    <p class="pn-foot"><b>Grounding.</b> Impact ranges are Adapty's expected effect from teardowns and A/B tests across subscription apps — not measured lift for Praktika. Prices, ratings, quotes and feature rows come from Praktika's own App Store listing, marketing site and in-app screens; see <a href="#" onclick="openSrc();return false">Sources &amp; grounding</a>.</p>`;
+}
+
+/* ═══ tab 2 ═══════════════════════════════════════════════════════════════ */
+const PRC={'Fix first':'f','High':'h','Medium':'m','Low':'l'};
+document.getElementById('tab2').innerHTML=`
+  <h2>Ranked changes</h2>
+  <p class="sub">Praktika's onboarding and paywall, re-sequenced. The art direction is unchanged — only the order and the wiring.</p>
+  <table><thead><tr><th>#</th><th>Priority</th><th>Change</th><th>What changed</th><th>Expected impact</th></tr></thead><tbody>
+  ${ROWS.map((r,i)=>`<tr><td class="n">${i+1}</td><td class="pr"><span class="pill pr-${PRC[r[0]]}">${r[0]}</span></td>
+    <td class="ch">${r[1]}</td><td>${r[2]}</td><td class="im">${r[3]}</td></tr>`).join('')}
+  </tbody></table>
+  <p class="disc">Impact ranges are Adapty's expected effect from teardowns and A/B tests across subscription apps — not measured lift for Praktika. Every price, rating and quote in the prototype comes from Praktika's own App Store listing, marketing site and in-app screens — <a href="#" onclick="openSrc();return false">Sources &amp; grounding</a>.</p>`;
+
+function tab(n){
+  document.getElementById('tab1').style.display = n===1?'':'none';
+  document.getElementById('tab2').style.display = n===2?'block':'none';
+  document.getElementById('tb1').classList.toggle('on',n===1);
+  document.getElementById('tb2').classList.toggle('on',n===2);
+}
+
+/* ═══ sources ═════════════════════════════════════════════════════════════ */
+document.getElementById('srclist').innerHTML =
+  SRC.map(([k,v,u])=>`<dt>${k}</dt><dd>${v}${u?` <a href="${u}" target="_blank" rel="noopener">${u}</a>`:''}</dd>`).join('')
+  + `<h4>Slots left empty, and why</h4>`
+  + SRC_OUT.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('');
+function openSrc(){ document.getElementById('srcmodal').classList.add('on'); }
+function closeSrc(){ document.getElementById('srcmodal').classList.remove('on'); }
+document.getElementById('srcmodal').addEventListener('click',e=>{ if(e.target.id==='srcmodal') closeSrc(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeSrc(); });
+
+/* ═══ boot ════════════════════════════════════════════════════════════════ */
+(function clock(){ const d=new Date(); document.getElementById('clk').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0'); })();
+render();
+</script>
+</body>
+</html>
